@@ -51,66 +51,76 @@ app.get('/admin', (req, res) => {
 });
 
 // User Registration Route
+
+// Example register route to hash password
 app.post('/register', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { email, password, username } = req.body;
 
-        if (!username || !email || !password) {
-            return res.status(400).json({ message: 'Username, email, and password are required' });
+        if (!email || !password || !username) {
+            return res.status(400).json({ message: 'Email, password, and username are required' });
         }
 
-        // Check if user already exists
         const existingUser = await User.findOne({ email });
+
         if (existingUser) {
-            return res.status(400).json({ message: 'User with this email already exists' });
+            return res.status(400).json({ message: 'User already exists with this email' });
         }
 
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Hash password before saving it to the database
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Create a new user
         const newUser = new User({
-            username,
             email,
-            password: hashedPassword
+            password: hashedPassword, // Store hashed password
+            username,
+            role: 'user' // Default role (can be modified based on your logic)
         });
 
         await newUser.save();
 
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
-        console.error('Error during registration:', error);
         res.status(500).json({ message: 'Server error during registration' });
     }
 });
 
-// User Login Route
+
+
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Check if email and password are provided
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
+        // Find the user by email
         const user = await User.findOne({ email });
 
+        // If user doesn't exist, return an error
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
+        // Compare the plain-text password with the hashed password in the database
         const isMatch = await bcrypt.compare(password, user.password);
 
+        // If passwords do not match, return an error
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
+        // Generate JWT token for the authenticated user
         const token = jwt.sign(
             { id: user._id, username: user.username, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
+        // Send the token and user info as response
         res.json({ username: user.username, role: user.role, token });
     } catch (error) {
         res.status(500).json({ message: 'Server error during login' });
