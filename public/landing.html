@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat & Meeting App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: url('laptops-593296_1280.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .container {
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8); /* Slightly transparent background */
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            max-width: 80%;
+            margin: auto;
+        }
+        .container h1, .container p {
+            color: #007bff; /* Button background color */
+        }
+        .container h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .container p {
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+        .button {
+            padding: 12px 20px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            margin: 10px;
+            display: inline-block;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        footer {
+            font-size: 14px;
+            color: #777;
+            text-align: center;
+            margin-top: 40px;
+            width: 100%;
+            position: absolute;
+            bottom: 20px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
+            .container h1 {
+                font-size: 28px;
+            }
+            .container p {
+                font-size: 16px;
+            }
+            .button {
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Chat & Meeting App</h1>
+        <p>Seamlessly chat and host video meetings with your team or community.</p>
+
+        <div>
+            <!-- Login button -->
+            <a href="/login" class="button">Login</a>
+            <!-- Register button -->
+            <a href="/register" class="button">Register</a>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2024 Chat & Meeting App. All rights reserved.
+    </footer>
+</body>
+</html>

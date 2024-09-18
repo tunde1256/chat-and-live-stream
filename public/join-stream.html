@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Live Stream</title>
+    <style>
+        /* Global Styling */
+        body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background Video */
+        .background-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(3px); /* Optional: adds blur to the video */
+            z-index: -1; /* Ensures video stays behind other content */
+        }
+
+        /* Container Styling */
+        .container {
+            background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white background */
+            padding: 30px; /* Increased padding for better spacing */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px; /* Space below heading */
+            font-size: 24px;
+            color: #007bff;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px); /* Adjust width to account for padding */
+            padding: 10px;
+            margin-bottom: 20px; /* Increased space below input */
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            width: calc(100% - 22px); /* Adjust width to account for padding */
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <video class="background-video" autoplay muted loop>
+        <source src="7660169-uhd_2160_3840_25fps.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Form Container -->
+    <div class="container">
+        <h2>Join Live Stream</h2>
+        <input type="text" id="usernameInput" placeholder="Enter your username" />
+        <button onclick="joinStream()">Join Stream</button>
+    </div>
+
+    <script>
+        function joinStream() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (!username) {
+                alert('Username is required to join the stream.');
+                return;
+            }
+
+            // Retrieve streamId and token from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamId = urlParams.get('streamId');
+            const token = urlParams.get('token');
+
+            // Check for valid stream ID and token
+            if (!streamId || !token) {
+                alert('Invalid stream link.');
+                return;
+            }
+
+            // Redirect the user to the actual stream page with their username included
+            window.location.href = `http://localhost:8080/view-stream.html?streamId=${streamId}&token=${token}&username=${encodeURIComponent(username)}`;
+        }
+    </script>
+</body>
+</html>

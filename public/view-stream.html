@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Live Stream</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            background-color: #e0f7fa; /* Light cyan background */
+            color: #333;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            max-width: 1200px;
+        }
+        video {
+            width: 60%;
+            max-width: 800px;
+            border-radius: 12px;
+            margin-right: 20px;
+            background-color: #000; /* Keeps video area visible when webcam is off */
+            display: block;
+        }
+        .chat-section {
+            flex: 1;
+            background-color: #ffffff; /* White background for chat section */
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .chat-section input[type="text"], .chat-section button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            outline: none;
+        }
+        .chat-section input[type="text"] {
+            width: calc(100% - 60px);
+        }
+        .chat-section button {
+            width: 45px;
+            background-color: #00796b; /* Teal color for buttons */
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px; /* Increase icon size */
+        }
+        .chat-section button:hover {
+            background-color: #004d40; /* Darker teal on hover */
+        }
+        .chat-section .chat-message-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .chat-section .chat-message-list li {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .button-section {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .button-section button {
+            width: 60px;
+            margin: 5px;
+            font-size: 24px; /* Enlarge icon size */
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 18px;
+            color: #00796b; /* Teal color */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Live Stream</h2>
+        <div class="status" id="userStatus">User Status: Not Connected</div>
+        <div class="main-content">
+            <video id="videoStream" controls autoplay muted></video>
+            <div class="chat-section">
+                <input type="text" id="chatMessage" placeholder="Enter your message">
+                <button id="sendMessageButton" title="Send Message"><i class="fas fa-paper-plane"></i></button>
+                <ul id="chatMessages" class="chat-message-list"></ul>
+            </div>
+        </div>
+        <div class="button-section">
+            <button id="startScreenShare" title="Start Screen Share"><i class="fas fa-desktop"></i></button>
+            <button id="stopScreenShare" title="Stop Screen Share"><i class="fas fa-stop-circle"></i></button>
+            <button id="muteMic" title="Mute Mic"><i class="fas fa-microphone"></i></button>
+            <button id="toggleVideo" title="Toggle Video"><i class="fas fa-video"></i></button>
+        </div>
+    </div>
+
+    <script>
+        let videoElement = document.getElementById('videoStream');
+        let localStream = null; // To track the local stream
+        let screenStream = null; // To track the screen share stream
+        let isMicMuted = false; // To track mic mute state
+        const peerConnection = new RTCPeerConnection();
+
+        // Simulating a user name (in a real app, it would be fetched from user data)
+        const userName = "John Doe";
+
+        // WebRTC code
+        peerConnection.ontrack = (event) => {
+            videoElement.srcObject = event.streams[0];
+        };
+
+        // Function to toggle video visibility
+        async function toggleVideo() {
+            if (!localStream) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    localStream = stream;
+                    videoElement.srcObject = stream;
+                    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+                    document.getElementById('toggleVideo').innerHTML = '<i class="fas fa-video"></i>';
+                } catch (err) {
+                    console.error('Error accessing camera:', err);
+                }
+            } else {
+                const videoTracks = localStream.getVideoTracks();
+                if (videoTracks.length > 0) {
+                    const isVideoEnabled = videoTracks[0].enabled;
+                    if (!isVideoEnabled) {
+                        videoTracks[0].enabled = true;
+                        document.getElementById('toggleVideo').innerHTML = '<i class="fas fa-video"></i>';
+                    } else {
+                        videoTracks.forEach(track => track.stop());
+                        videoElement.srcObject = null; // Keep video element visible but without feed
+                        localStream = null;
+                        document.getElementById('toggleVideo').innerHTML = '<i class="fas fa-video-slash"></i>';
+                    }
+                }
+            }
+        }
+
+        // Function to start screen sharing
+        async function startScreenShare() {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                screenStream = stream;
+                const tracks = stream.getTracks();
+                tracks.forEach(track => peerConnection.addTrack(track, stream));
+                videoElement.srcObject = stream;
+            } catch (err) {
+                console.error('Error sharing screen:', err);
+            }
+        }
+
+        // Function to stop screen sharing
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+                videoElement.srcObject = localStream;
+            }
+        }
+
+        // Function to mute/unmute the microphone
+        function toggleMic() {
+            if (localStream) {
+                const audioTracks = localStream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                    isMicMuted = !isMicMuted;
+                    audioTracks[0].enabled = !isMicMuted; // Mute/unmute mic
+                    document.getElementById('muteMic').innerHTML = isMicMuted
+                        ? '<i class="fas fa-microphone-slash"></i>'
+                        : '<i class="fas fa-microphone"></i>';
+                }
+            }
+        }
+
+        // Chat message sending logic
+        document.getElementById('sendMessageButton').addEventListener('click', function() {
+            const message = document.getElementById('chatMessage').value;
+            if (message.trim() !== '') {
+                const chatList = document.getElementById('chatMessages');
+                const newMessage = document.createElement('li');
+                newMessage.textContent = `${userName}: ${message}`;
+                chatList.appendChild(newMessage);
+                document.getElementById('chatMessage').value = ''; // Clear input after sending
+            }
+        });
+
+        // Simulate connection status change
+        window.addEventListener('load', function() {
+            document.getElementById('userStatus').textContent = 'User Status: Connected';
+        });
+
+        // Button event listeners
+        document.getElementById('toggleVideo').addEventListener('click', toggleVideo);
+        document.getElementById('startScreenShare').addEventListener('click', startScreenShare);
+        document.getElementById('stopScreenShare').addEventListener('click', stopScreenShare);
+        document.getElementById('muteMic').addEventListener('click', toggleMic);
+    </script>
+</body>
+</html>

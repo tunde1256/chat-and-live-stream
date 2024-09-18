@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Inline CSS for specific styling of this page */
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('pexels-cottonbro-6814341.jpg'); /* Replace with your image path */
+            background-size: cover; /* Cover the entire page */
+            background-position: center; /* Center the background image */
+            background-attachment: fixed; /* Fix the background image */
+            margin: 0;
+            padding: 0;
+            display: flex; /* Enable Flexbox */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            height: 100vh; /* Full viewport height */
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Panel - Broadcast Message</h2>
+        <form id="broadcastForm">
+            <label for="message">Message:</label>
+            <input type="text" id="message" name="message" required>
+            <button type="submit">Send Broadcast</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('broadcastForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const message = document.getElementById('message').value;
+
+            try {
+                const response = await fetch('/broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message);
+                    document.getElementById('message').value = ''; // Clear the input field
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error('Error during broadcast:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
