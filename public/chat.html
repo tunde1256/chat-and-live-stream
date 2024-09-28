@@ -47,19 +47,8 @@
             flex: 1;
             min-width: 300px;
             max-height: 500px;
-            overflow: hidden; /* Prevent overflow */
-        }
-
-        .chat-section {
-            margin-right: 20px;
             display: flex;
             flex-direction: column;
-        }
-
-        .stream-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
 
         h2 {
@@ -182,12 +171,8 @@
             <div class="stream-buttons">
                 <button class="btn" onclick="startLiveStream()"><i class="fas fa-video"></i>Start Live Stream</button>
                 <button class="btn" onclick="endLiveStream()"><i class="fas fa-stop"></i>End Live Stream</button>
-            </div>
-            <div class="stream-buttons">
                 <button class="btn" onclick="startScreenShare()"><i class="fas fa-desktop"></i>Start Screen Share</button>
                 <button class="btn" onclick="stopScreenShare()"><i class="fas fa-times-circle"></i>Stop Screen Share</button>
-            </div>
-            <div class="stream-buttons">
                 <button class="btn" onclick="toggleVideo()"><i class="fas fa-video-slash"></i>Toggle Video</button>
                 <button class="btn" onclick="copyStreamLink()"><i class="fas fa-link"></i>Copy Link</button>
             </div>
@@ -222,10 +207,19 @@
             };
 
             socket.onmessage = (event) => {
-                const message = event.data;
-                const listItem = document.createElement('li');
-                listItem.textContent = message;
-                document.getElementById('messageList').appendChild(listItem);
+                // Assuming incoming messages are JSON formatted
+                try {
+                    const message = JSON.parse(event.data);
+
+                    // Filter out signaling messages
+                    if (typeof message === 'string') {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = message;
+                        document.getElementById('messageList').appendChild(listItem);
+                    }
+                } catch (e) {
+                    console.error('Error parsing message:', e);
+                }
             };
         }
 
@@ -284,19 +278,41 @@
         function endLiveStream() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                video.srcObject = null;
+                signalingSocket.send(JSON.stringify({ end: true })); // Notify other users that the stream has ended
             }
-            if (peerConnection) {
-                peerConnection.close();
-            }
-            document.getElementById('streamLink').innerHTML = '';
         }
 
-        function sendMessage() {
-            const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value;
-            if (message) {
-                socket.send(message);
-                messageInput.value = ''; // Clear input after sending
+        function startScreenShare() {
+            navigator.mediaDevices.getDisplayMedia({ video: true })
+                .then(screenStream => {
+                    video.srcObject = screenStream;
+                    addTracksToPeerConnection(screenStream);
+
+                    screenStream.getTracks()[0].onended = () => {
+                        video.srcObject = localStream; // Switch back to the webcam
+                    };
+                })
+                .catch(error => {
+                    console.error('Error starting screen share:', error);
+                });
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+                video.srcObject = localStream; // Switch back to the webcam
+            }
+        }
+
+        function toggleVideo() {
+            if (localStream) {
+                videoEnabled = !videoEnabled;
+                localStream.getVideoTracks().forEach(track => {
+                    track.enabled = videoEnabled;
+                });
             }
         }
 
@@ -304,56 +320,21 @@
             const streamLink = localStorage.getItem('streamLink');
             navigator.clipboard.writeText(streamLink).then(() => {
                 alert('Stream link copied to clipboard!');
-            }).catch(err => {
-                console.error('Could not copy text: ', err);
             });
         }
 
-        function toggleVideo() {
-            videoEnabled = !videoEnabled;
-            localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
-        }
-
-        function startScreenShare() {
-            navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
-                screenStream = stream;
-                addTracksToPeerConnection(stream);
-            }).catch(error => {
-                console.error('Error starting screen share:', error);
-            });
-        }
-
-        function stopScreenShare() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.send(JSON.stringify(message));
+                messageInput.value = ''; // Clear input field
             }
         }
 
-        window.onload = () => {
-            setupWebSockets();
-            initSignalingSocket();
-
-            peerConnection = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'turn:your_turn_server_url', username: 'user', credential: 'pass' }
-                ]
-            });
-
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    signalingSocket.send(JSON.stringify({ iceCandidate: event.candidate }));
-                }
-            };
-
-            peerConnection.ontrack = (event) => {
-                const remoteVideo = document.createElement('video');
-                remoteVideo.srcObject = event.streams[0];
-                remoteVideo.autoplay = true;
-                remoteVideo.style.width = '100%'; // Make the remote video responsive
-                document.body.appendChild(remoteVideo);
-            };
-        };
+        // Start everything
+        setupWebSockets();
+        initSignalingSocket();
     </script>
 
 </body>
