@@ -11,8 +11,16 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Use environment variable for port, fallback to 8080 for local development
+const PORT = process.env.PORT || 8080;
+const WS_PORT = process.env.WS_PORT || 9090; // WebSocket signaling server port
+
+// WebSocket server for general communication
 const wss = new WebSocket.Server({ server });
-const signalingServer = new WebSocket.Server({ port: 9090 }); // Signaling server for WebRTC
+
+// WebSocket signaling server for WebRTC
+const signalingServer = new WebSocket.Server({ port: WS_PORT });
 
 app.use(bodyParser.json());
 
@@ -28,7 +36,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
-
 
 // Serve the login page
 app.get('/login', (req, res) => {
@@ -51,8 +58,6 @@ app.get('/admin', (req, res) => {
 });
 
 // User Registration Route
-
-// Example register route to hash password
 app.post('/register', async (req, res) => {
     try {
         const { email, password, username } = req.body;
@@ -67,15 +72,14 @@ app.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'User already exists with this email' });
         }
 
-        // Hash password before saving it to the database
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         const newUser = new User({
             email,
-            password: hashedPassword, // Store hashed password
+            password: hashedPassword,
             username,
-            role: 'user' // Default role (can be modified based on your logic)
+            role: 'user'
         });
 
         await newUser.save();
@@ -86,41 +90,32 @@ app.post('/register', async (req, res) => {
     }
 });
 
-
-
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Check if email and password are provided
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
-        // Find the user by email
         const user = await User.findOne({ email });
 
-        // If user doesn't exist, return an error
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        // Compare the plain-text password with the hashed password in the database
         const isMatch = await bcrypt.compare(password, user.password);
 
-        // If passwords do not match, return an error
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        // Generate JWT token for the authenticated user
         const token = jwt.sign(
             { id: user._id, username: user.username, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Send the token and user info as response
         res.json({ username: user.username, role: user.role, token });
     } catch (error) {
         res.status(500).json({ message: 'Server error during login' });
@@ -128,12 +123,10 @@ app.post('/login', async (req, res) => {
 });
 
 // WebSocket Middleware to verify JWT token
-// WebSocket Middleware to verify JWT token
 wss.on('connection', (socket, req) => {
     const token = new URL(req.url, `http://${req.headers.host}`).searchParams.get('token');
 
     if (token) {
-        // Handle authenticated users
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
                 socket.close();
@@ -143,11 +136,9 @@ wss.on('connection', (socket, req) => {
 
             console.log(`User ${decoded.username} connected`);
 
-            // Handle incoming messages
             socket.on('message', (message) => {
                 console.log(`Message from ${decoded.username}: ${message}`);
 
-                // Broadcast message to all connected clients
                 wss.clients.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN) {
                         client.send(`${decoded.username}: ${message}`);
@@ -160,14 +151,11 @@ wss.on('connection', (socket, req) => {
             });
         });
     } else {
-        // Handle unauthenticated users
         console.log('Unauthenticated user connected');
 
-        // Handle incoming messages from unauthenticated users (optional)
         socket.on('message', (message) => {
             console.log(`Message from unauthenticated user: ${message}`);
 
-            // Broadcast message to all connected clients
             wss.clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                     client.send(` ${message}`);
@@ -190,7 +178,6 @@ app.post('/broadcast', async (req, res) => {
             return res.status(400).json({ message: 'Message is required' });
         }
 
-        // Broadcast message to all WebSocket clients
         wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(`Broadcast: ${message}`);
@@ -199,7 +186,6 @@ app.post('/broadcast', async (req, res) => {
 
         res.json({ message: 'Broadcast message sent' });
     } catch (error) {
-        console.error('Error during broadcast:', error);
         res.status(500).json({ message: 'Server error during broadcast' });
     }
 });
@@ -223,11 +209,10 @@ app.get('/stream', (req, res) => {
         return res.status(400).send('Stream ID is required');
     }
 
-    // Serve a placeholder message or implement actual streaming logic
     res.send(`Stream endpoint for streamId ${streamId}. Implement actual streaming logic here.`);
 });
 
 // Start the server
-server.listen(8080, () => {
-    console.log('Server is listening on port 8080');
+server.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
 });

@@ -95,19 +95,18 @@
                 return;
             }
 
-            // Retrieve streamId and token from the URL
+            // Retrieve streamId from the URL
             const urlParams = new URLSearchParams(window.location.search);
             const streamId = urlParams.get('streamId');
-            const token = urlParams.get('token');
 
-            // Check for valid stream ID and token
-            if (!streamId || !token) {
+            // Check for valid stream ID
+            if (!streamId) {
                 alert('Invalid stream link.');
                 return;
             }
 
             // Redirect the user to the actual stream page with their username included
-            window.location.href = `https://chat-and-live-stream.onrender.com?streamId=${streamId}&token=${token}&username=${encodeURIComponent(username)}`;
+            window.location.href = `https://chat-and-live-stream.onrender.com/view-stream.html?streamId=${streamId}&username=${encodeURIComponent(username)}`;
         }
     </script>
 </body>

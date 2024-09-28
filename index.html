@@ -4,6 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            max-height: 400px; /* Limit height for overflow */
+            overflow-y: auto; /* Enable scrolling */
+            border: 1px solid #ddd; /* Add border for clarity */
+            margin-top: 20px;
+        }
+
+        #messages li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd; /* Separate messages */
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 70%; /* Adjust input width */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px; /* Space between input and button */
+        }
+
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darken on hover */
+        }
+    </style>
 </head>
 <body>
     <h1>WebSocket Chat</h1>
@@ -23,7 +68,11 @@
             window.location.href = '/login';
         }
 
-        const socket = new WebSocket(`ws://localhost:8080?token=${token}`);
+        // Determine the WebSocket protocol based on the current page protocol
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+
+        // Create WebSocket connection based on the deployment URL
+        const socket = new WebSocket(`${protocol}://chat-and-live-stream.onrender.com?token=${token}`);
 
         socket.onopen = () => {
             console.log('Connected to server');
@@ -37,6 +86,7 @@
             const listItem = document.createElement('li');
             listItem.textContent = message;
             messageList.appendChild(listItem);
+            messageList.scrollTop = messageList.scrollHeight; // Auto-scroll to the latest message
         };
 
         socket.onclose = () => {
@@ -48,8 +98,12 @@
         };
 
         function sendMessage() {
-            const message = document.getElementById('messageInput').value;
-            socket.send(message);
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim(); // Trim whitespace
+            if (message !== '') {
+                socket.send(message);
+                messageInput.value = ''; // Clear input after sending
+            }
         }
     </script>
 </body>

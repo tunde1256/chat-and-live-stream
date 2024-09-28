@@ -122,8 +122,12 @@
         let isMicMuted = false; // To track mic mute state
         const peerConnection = new RTCPeerConnection();
 
+        // Set the deployed URL
+        const deployedURL = "https://chat-and-live-stream.onrender.com"; // Replace with your deployed URL
+
         // Simulating a user name (in a real app, it would be fetched from user data)
-        const userName = "John Doe";
+        const urlParams = new URLSearchParams(window.location.search);
+        const userName = urlParams.get('username') || "Guest"; // Get username from URL or set as 'Guest'
 
         // WebRTC code
         peerConnection.ontrack = (event) => {
@@ -201,9 +205,11 @@
             if (message.trim() !== '') {
                 const chatList = document.getElementById('chatMessages');
                 const newMessage = document.createElement('li');
-                newMessage.textContent = `${userName}: ${message}`;
+                const timestamp = new Date().toLocaleTimeString(); // Get current time
+                newMessage.textContent = `${userName} [${timestamp}]: ${message}`; // Include username and timestamp
                 chatList.appendChild(newMessage);
                 document.getElementById('chatMessage').value = ''; // Clear input after sending
+                chatList.scrollTop = chatList.scrollHeight; // Scroll to bottom
             }
         });
 
