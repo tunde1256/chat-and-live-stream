@@ -16,7 +16,10 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
+            padding: 20px; /* Add some padding */
+            box-sizing: border-box; /* Ensure padding does not affect width */
         }
+
         .container {
             display: flex;
             flex-direction: column;
@@ -24,37 +27,49 @@
             width: 100%;
             max-width: 1200px;
         }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
         .main-content {
             display: flex;
             flex-direction: row;
             width: 100%;
             max-width: 1200px;
+            gap: 20px; /* Add gap between video and chat section */
         }
+
         video {
-            width: 60%;
+            width: 100%;
             max-width: 800px;
             border-radius: 12px;
-            margin-right: 20px;
             background-color: #000; /* Keeps video area visible when webcam is off */
             display: block;
         }
+
         .chat-section {
             flex: 1;
             background-color: #ffffff; /* White background for chat section */
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-height: 300px; /* Set max height for the chat section */
+            overflow-y: auto; /* Allow scrolling */
         }
+
         .chat-section input[type="text"], .chat-section button {
             padding: 10px;
-            margin: 5px;
+            margin: 5px 0; /* Adjust margins */
             border-radius: 5px;
             border: 1px solid #ddd;
             outline: none;
         }
+
         .chat-section input[type="text"] {
             width: calc(100% - 60px);
         }
+
         .chat-section button {
             width: 45px;
             background-color: #00796b; /* Teal color for buttons */
@@ -63,35 +78,68 @@
             cursor: pointer;
             font-size: 18px; /* Increase icon size */
         }
+
         .chat-section button:hover {
             background-color: #004d40; /* Darker teal on hover */
         }
-        .chat-section .chat-message-list {
+
+        .chat-message-list {
             list-style: none;
             padding: 0;
             margin: 0;
-            height: 300px;
+            height: 200px; /* Adjust height */
             overflow-y: auto;
         }
-        .chat-section .chat-message-list li {
+
+        .chat-message-list li {
             padding: 5px;
             border-bottom: 1px solid #ddd;
         }
+
         .button-section {
             display: flex;
             flex-direction: row;
             justify-content: center;
             margin-top: 10px;
+            flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
         }
+
         .button-section button {
             width: 60px;
             margin: 5px;
             font-size: 24px; /* Enlarge icon size */
         }
+
         .status {
             margin-top: 10px;
             font-size: 18px;
             color: #00796b; /* Teal color */
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column; /* Stack video and chat on small screens */
+            }
+
+            video {
+                width: 100%; /* Full width for video on small screens */
+                margin: 0; /* Remove margin */
+            }
+
+            .chat-section {
+                width: 100%; /* Full width for chat section on small screens */
+                max-height: 200px; /* Reduce max height on small screens */
+            }
+
+            .button-section {
+                flex-direction: row; /* Keep button section in a row */
+                justify-content: space-around; /* Space out buttons */
+            }
+
+            .chat-section input[type="text"] {
+                width: calc(100% - 50px); /* Adjust input width on small screens */
+            }
         }
     </style>
 </head>

@@ -47,6 +47,7 @@
             flex: 1;
             min-width: 300px;
             max-height: 500px;
+            overflow: hidden; /* Prevent overflow */
         }
 
         .chat-section {
@@ -283,39 +284,11 @@
         function endLiveStream() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
             }
-        }
-
-        function startScreenShare() {
-            navigator.mediaDevices.getDisplayMedia({ video: true })
-                .then((stream) => {
-                    screenStream = stream;
-                    addTracksToPeerConnection(stream);
-                    video.srcObject = stream;
-                })
-                .catch(error => console.error('Error sharing screen:', error));
-        }
-
-        function stopScreenShare() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
+            if (peerConnection) {
+                peerConnection.close();
             }
-        }
-
-        function toggleVideo() {
-            if (localStream) {
-                videoEnabled = !videoEnabled;
-                localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
-            }
-        }
-
-        function copyStreamLink() {
-            const streamLink = localStorage.getItem('streamLink');
-            navigator.clipboard.writeText(streamLink)
-                .then(() => alert('Stream link copied to clipboard!'))
-                .catch(err => console.error('Failed to copy: ', err));
+            document.getElementById('streamLink').innerHTML = '';
         }
 
         function sendMessage() {
@@ -323,30 +296,63 @@
             const message = messageInput.value;
             if (message) {
                 socket.send(message);
-                messageInput.value = ''; // Clear the input after sending
+                messageInput.value = ''; // Clear input after sending
             }
         }
 
-        // Initialize WebSockets and the signaling socket
-        setupWebSockets();
-        initSignalingSocket();
+        function copyStreamLink() {
+            const streamLink = localStorage.getItem('streamLink');
+            navigator.clipboard.writeText(streamLink).then(() => {
+                alert('Stream link copied to clipboard!');
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
+            });
+        }
 
-        // Create PeerConnection after setting up signaling
-        peerConnection = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        });
+        function toggleVideo() {
+            videoEnabled = !videoEnabled;
+            localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
+        }
 
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                signalingSocket.send(JSON.stringify({ iceCandidate: event.candidate }));
+        function startScreenShare() {
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
+                screenStream = stream;
+                addTracksToPeerConnection(stream);
+            }).catch(error => {
+                console.error('Error starting screen share:', error);
+            });
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
             }
-        };
+        }
 
-        peerConnection.ontrack = (event) => {
-            video.srcObject = event.streams[0];
+        window.onload = () => {
+            setupWebSockets();
+            initSignalingSocket();
+
+            peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'turn:your_turn_server_url', username: 'user', credential: 'pass' }
+                ]
+            });
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    signalingSocket.send(JSON.stringify({ iceCandidate: event.candidate }));
+                }
+            };
+
+            peerConnection.ontrack = (event) => {
+                const remoteVideo = document.createElement('video');
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.autoplay = true;
+                remoteVideo.style.width = '100%'; // Make the remote video responsive
+                document.body.appendChild(remoteVideo);
+            };
         };
     </script>
 
