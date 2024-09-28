@@ -229,7 +229,7 @@
         }
 
         function initSignalingSocket() {
-            signalingSocket = new WebSocket(`wss://your-signaling-server-url?token=${token}`);
+            signalingSocket = new WebSocket(`wss://chat-and-live-stream.onrender.com?token=${token}`);
 
             signalingSocket.onmessage = async (event) => {
                 const data = JSON.parse(event.data);
