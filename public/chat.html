@@ -96,6 +96,17 @@
             padding: 10px;
             border-bottom: 1px solid #ddd;
         }
+
+        li .username {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        li .message {
+            display: block;
+            margin-left: 10px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +130,7 @@
     <script>
         let socket;
         const token = localStorage.getItem('token');
-        const username = localStorage.getItem('username') || "User"; // Get username from localStorage
+        const username = localStorage.getItem('username') || "User"; // Get username from localStorage or default to 'User'
         const messageList = document.getElementById('messageList');
 
         // Function to set up WebSocket
@@ -167,7 +178,7 @@
         // Function to display message in the chat
         function displayMessage(username, text) {
             const listItem = document.createElement('li');
-            listItem.textContent = `${username}: ${text}`;
+            listItem.innerHTML = `<span class="username">${username}:</span> <span class="message">${text}</span>`;
             messageList.appendChild(listItem);
         }
 
