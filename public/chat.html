@@ -190,6 +190,7 @@
         const video = document.getElementById('videoStream');
         const token = localStorage.getItem('token');
         const username = localStorage.getItem('username') || "User"; // Get username from localStorage
+        let messageQueue = []; // Queue for messages when socket is not open
 
         function setupWebSockets() {
             if (socket && socket.readyState !== WebSocket.CLOSED) return; // Prevent multiple connections
@@ -198,12 +199,12 @@
 
             socket.onopen = () => {
                 console.log('WebSocket connection established');
+                // Send all queued messages
+                while (messageQueue.length > 0) {
+                    const messageData = messageQueue.shift(); // Get the first message in the queue
+                    socket.send(JSON.stringify(messageData)); // Send it
+                }
             };
-
-            // socket.onclose = () => {
-            //     console.log('WebSocket connection closed. Attempting to reconnect...');
-            //     reconnectWebSocket();
-            // };
 
             socket.onerror = (error) => {
                 console.error('WebSocket error:', error);
@@ -216,13 +217,6 @@
                 document.getElementById('messageList').appendChild(listItem);
                 console.log('Received message:', messageData);
             };
-        }
-
-        function reconnectWebSocket() {
-            setTimeout(() => {
-                console.log('Reconnecting to WebSocket...');
-                setupWebSockets(); // Try to reconnect
-            }, 100000); // Reconnect after 5 seconds
         }
 
         async function startLiveStream() {
@@ -277,34 +271,37 @@
             const link = localStorage.getItem('streamLink');
             navigator.clipboard.writeText(link).then(() => {
                 alert('Stream link copied to clipboard!');
-            }).catch(err => {
-                console.error('Could not copy text: ', err);
             });
         }
 
         function addTracksToPeerConnection(stream) {
             if (!peerConnection) {
+                // Initialize peer connection
                 peerConnection = new RTCPeerConnection();
+                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
             }
-            stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
         }
 
         function sendMessage() {
-            const messageInput = document.getElementById('messageInput');
-            const messageText = messageInput.value;
-            if (messageText.trim()) {
-                const messageData = {
-                    username: username,
-                    text: messageText,
-                };
-                socket.send(JSON.stringify(messageData));
-                messageInput.value = '';
+            const input = document.getElementById('messageInput');
+            const messageText = input.value;
+            if (messageText) {
+                const messageData = { username, text: messageText }; // Create message data
+
+                // Check if socket is open
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify(messageData)); // Send message directly
+                } else {
+                    // Queue the message for later
+                    messageQueue.push(messageData);
+                    alert('WebSocket is not open. Message queued for sending.');
+                }
+
+                input.value = ''; // Clear input field
             }
         }
 
-        window.onload = () => {
-            setupWebSockets();
-        };
+        setupWebSockets(); // Initialize WebSocket connection on page load
     </script>
 
 </body>
