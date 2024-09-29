@@ -275,33 +275,32 @@
         }
 
         function addTracksToPeerConnection(stream) {
-            if (!peerConnection) {
-                // Initialize peer connection
-                peerConnection = new RTCPeerConnection();
-                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-            }
+            // Add tracks to peer connection logic
         }
 
         function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const messageText = input.value;
-            if (messageText) {
-                const messageData = { username, text: messageText }; // Create message data
+            const messageInput = document.getElementById('messageInput');
+            const messageText = messageInput.value;
 
-                // Check if socket is open
+            if (messageText) {
+                const messageData = {
+                    username: username,
+                    text: messageText
+                };
+
                 if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify(messageData)); // Send message directly
+                    socket.send(JSON.stringify(messageData));
                 } else {
-                    // Queue the message for later
+                    // Queue the message if the socket is not open
                     messageQueue.push(messageData);
-                    alert('WebSocket is not open. Message queued for sending.');
                 }
 
-                input.value = ''; // Clear input field
+                messageInput.value = ''; // Clear the input field
             }
         }
 
-        setupWebSockets(); // Initialize WebSocket connection on page load
+        // Initialize WebSockets when the window loads
+        window.onload = setupWebSockets;
     </script>
 
 </body>
