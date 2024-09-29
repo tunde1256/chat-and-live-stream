@@ -39,7 +39,7 @@
             flex-wrap: wrap;
         }
 
-        .chat-section {
+        .chat-section, .stream-section {
             background-color: rgba(255, 255, 255, 0.8);
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -55,6 +55,34 @@
             border-bottom: 2px solid #ddd;
             padding-bottom: 10px;
             margin-bottom: 20px;
+        }
+
+        #videoStream {
+            border-radius: 12px;
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 10px;
+            margin-right: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
         }
 
         input[type="text"] {
@@ -88,8 +116,6 @@
             margin: 0;
             overflow-y: auto;
             flex: 1;
-            border: 1px solid #ddd;
-            height: 300px;
         }
 
         li {
@@ -97,22 +123,34 @@
             border-bottom: 1px solid #ddd;
         }
 
-        li .username {
-            font-weight: bold;
-            color: #007bff;
+        .stream-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
         }
 
-        li .message {
-            display: block;
-            margin-left: 10px;
-            color: #333;
+        #streamLink {
+            margin-top: 15px;
+            word-break: break-all;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+            .chat-section, .stream-section {
+                margin-right: 0;
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Chat Room</h1>
+        <h1>Chat Room & Live Stream</h1>
     </header>
 
     <div class="container">
@@ -123,22 +161,49 @@
                 <input type="text" id="messageInput" placeholder="Enter your message">
                 <button class="send-button" onclick="sendMessage()">Send</button>
             </div>
-            <ul id="messageList"></ul>
+            <ul id="messageList"></ul> <!-- Display list of messages -->
+        </section>
+
+        <!-- Live Stream Section -->
+        <section class="stream-section">
+            <h2>Live Video Stream</h2>
+            <video id="videoStream" autoplay muted></video>
+            <div class="stream-buttons">
+                <button class="btn" onclick="startLiveStream()"><i class="fas fa-video"></i>Start Live Stream</button>
+                <button class="btn" onclick="endLiveStream()"><i class="fas fa-stop"></i>End Live Stream</button>
+                <button class="btn" onclick="startScreenShare()"><i class="fas fa-desktop"></i>Start Screen Share</button>
+                <button class="btn" onclick="stopScreenShare()"><i class="fas fa-times-circle"></i>Stop Screen Share</button>
+                <button class="btn" onclick="toggleVideo()"><i class="fas fa-video-slash"></i>Toggle Video</button>
+                <button class="btn" onclick="copyStreamLink()"><i class="fas fa-link"></i>Copy Link</button>
+            </div>
+            <div id="streamLink"></div>
         </section>
     </div>
 
     <script>
         let socket;
+        let signalingSocket;
+        let peerConnection;
+        let localStream;
+        let screenStream;
+        let videoEnabled = true;
+        const video = document.getElementById('videoStream');
         const token = localStorage.getItem('token');
-        const username = localStorage.getItem('username') || "User"; // Get username from localStorage or default to 'User'
-        const messageList = document.getElementById('messageList');
+        const username = localStorage.getItem('username') || "User"; // Get username from localStorage
+        let messageQueue = []; // Queue for messages when socket is not open
 
-        // Function to set up WebSocket
-        function setupWebSocket() {
+        function setupWebSockets() {
+            if (socket && socket.readyState !== WebSocket.CLOSED) return; // Prevent multiple connections
+
             socket = new WebSocket(`wss://chat-and-live-stream.onrender.com?token=${token}`);
 
             socket.onopen = () => {
-                console.log('WebSocket connected');
+                console.log('WebSocket connection established');
+                // Send all queued messages
+                while (messageQueue.length > 0) {
+                    const messageData = messageQueue.shift(); // Get the first message in the queue
+                    socket.send(JSON.stringify(messageData)); // Send it
+                }
             };
 
             socket.onerror = (error) => {
@@ -146,16 +211,76 @@
             };
 
             socket.onmessage = (event) => {
-                console.log('Message from server:', event.data);
                 const messageData = JSON.parse(event.data);
-                displayMessage(messageData.username, messageData.text);
+                const listItem = document.createElement('li');
+                listItem.textContent = `${messageData.username}: ${messageData.text}`; // Format message
+                document.getElementById('messageList').appendChild(listItem); // Append message to the list
+                console.log('Received message:', messageData);
             };
         }
 
-        // Function to send a message
+        async function startLiveStream() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                video.srcObject = localStream;
+                addTracksToPeerConnection(localStream);
+
+                const streamId = new Date().getTime();
+                const streamLink = `https://chat-and-live-stream.onrender.com/join-stream.html?streamId=${streamId}&token=${token}`;
+
+                localStorage.setItem('streamLink', streamLink);
+                document.getElementById('streamLink').innerHTML = `Your stream link: <a href="${streamLink}" target="_blank" style="color: blue; text-decoration: underline;">${streamLink}</a>`;
+            } catch (error) {
+                console.error('Error accessing media devices.', error);
+            }
+        }
+
+        function endLiveStream() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                video.srcObject = null;
+                document.getElementById('streamLink').textContent = '';
+            }
+        }
+
+        function startScreenShare() {
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then((stream) => {
+                screenStream = stream;
+                video.srcObject = screenStream;
+                addTracksToPeerConnection(screenStream);
+            });
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+                video.srcObject = localStream; // Revert to local stream if available
+            }
+        }
+
+        function toggleVideo() {
+            videoEnabled = !videoEnabled;
+            localStream.getVideoTracks().forEach(track => {
+                track.enabled = videoEnabled;
+            });
+        }
+
+        function copyStreamLink() {
+            const link = localStorage.getItem('streamLink');
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Stream link copied to clipboard!');
+            });
+        }
+
+        function addTracksToPeerConnection(stream) {
+            // Add tracks to peer connection logic
+        }
+
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const messageText = messageInput.value.trim(); // Trim whitespace
+            const messageText = messageInput.value;
 
             if (messageText) {
                 const messageData = {
@@ -163,27 +288,23 @@
                     text: messageText
                 };
 
-                // Send message through WebSocket
-                if (socket.readyState === WebSocket.OPEN) {
+                if (socket && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(messageData));
-                    displayMessage(username, messageText); // Show message in the UI immediately
+                    // Also display the sent message immediately in the chat
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${username}: ${messageText}`; // Format sent message
+                    document.getElementById('messageList').appendChild(listItem); // Append message to the list
                 } else {
-                    console.warn('WebSocket is not open.');
+                    // Queue the message if the socket is not open
+                    messageQueue.push(messageData);
                 }
 
                 messageInput.value = ''; // Clear the input field
             }
         }
 
-        // Function to display message in the chat
-        function displayMessage(username, text) {
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `<span class="username">${username}:</span> <span class="message">${text}</span>`;
-            messageList.appendChild(listItem);
-        }
-
-        // Initialize WebSocket when window loads
-        window.onload = setupWebSocket;
+        // Initialize WebSockets when the window loads
+        window.onload = setupWebSockets;
     </script>
 
 </body>
