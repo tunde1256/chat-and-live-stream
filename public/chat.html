@@ -189,6 +189,7 @@
         let videoEnabled = true;
         let video = document.getElementById('videoStream');
         const token = localStorage.getItem('token');
+        const username = "Tunde"; // Set the username for messages
 
         function setupWebSockets() {
             socket = new WebSocket(`wss://chat-and-live-stream.onrender.com?token=${token}`);
@@ -207,22 +208,11 @@
             };
 
             socket.onmessage = (event) => {
-                const message = event.data;
-
-                // Check if the message is in JSON format
-                try {
-                    const parsedMessage = JSON.parse(message);
-
-                    // Handle JSON messages if any
-                    // Add any JSON handling logic here
-                    console.log('Received JSON message:', parsedMessage);
-                } catch (e) {
-                    // If it's not JSON, treat it as a plain string message
-                    const listItem = document.createElement('li');
-                    listItem.textContent = message; // Use the plain message
-                    document.getElementById('messageList').appendChild(listItem);
-                    console.log('Received plain message:', message);
-                }
+                // Expecting a plain message in the format "Username: Message"
+                const listItem = document.createElement('li');
+                listItem.textContent = event.data; // Directly use the received message
+                document.getElementById('messageList').appendChild(listItem);
+                console.log('Received message:', event.data);
             };
         }
 
@@ -262,7 +252,7 @@
                 const streamLink = `https://chat-and-live-stream.onrender.com/join-stream.html?streamId=${streamId}&token=${token}`;
 
                 localStorage.setItem('streamLink', streamLink);
-                document.getElementById('streamLink').textContent = `Your stream link: ${streamLink}`;
+                document.getElementById('streamLink').innerHTML = `Your stream link: <a href="${streamLink}" target="_blank">${streamLink}</a>`;
             } catch (error) {
                 console.error('Error accessing media devices.', error);
             }
@@ -273,7 +263,7 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
                 video.srcObject = null;
-                document.getElementById('streamLink').textContent = '';
+                document.getElementById('streamLink').innerHTML = '';
             }
         }
 
@@ -289,56 +279,35 @@
             if (screenStream) {
                 screenStream.getTracks().forEach(track => track.stop());
                 screenStream = null;
-                video.srcObject = localStream; // Revert to local stream if available
+                video.srcObject = null;
             }
         }
 
         function toggleVideo() {
             videoEnabled = !videoEnabled;
-            localStream.getVideoTracks().forEach(track => {
-                track.enabled = videoEnabled;
-            });
+            localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
         }
 
         function copyStreamLink() {
-            const link = localStorage.getItem('streamLink');
-            navigator.clipboard.writeText(link).then(() => {
+            const streamLink = localStorage.getItem('streamLink');
+            navigator.clipboard.writeText(streamLink).then(() => {
                 alert('Stream link copied to clipboard!');
-            }).catch(err => {
-                console.error('Could not copy text: ', err);
             });
-        }
-
-        function addTracksToPeerConnection(stream) {
-            if (!peerConnection) {
-                peerConnection = new RTCPeerConnection();
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        signalingSocket.send(JSON.stringify({ iceCandidate: event.candidate }));
-                    }
-                };
-
-                stream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, stream);
-                });
-            }
         }
 
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value.trim();
+            const message = messageInput.value;
+
             if (message) {
-                const jsonMessage = JSON.stringify({ text: message }); // Send as JSON
-                socket.send(jsonMessage);
+                const formattedMessage = `${username}: ${message}`; // Format message as "Username: Message"
+                socket.send(formattedMessage); // Send the formatted message
                 messageInput.value = '';
             }
         }
 
-        // Initialize WebSockets on page load
-        window.onload = () => {
-            setupWebSockets();
-            initSignalingSocket();
-        };
+        setupWebSockets();
+        initSignalingSocket();
     </script>
 </body>
 </html>
