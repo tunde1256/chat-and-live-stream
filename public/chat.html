@@ -200,7 +200,7 @@
 
             socket.onclose = () => {
                 console.log('WebSocket connection closed. Attempting to reconnect...');
-                setTimeout(setupWebSockets, 5000); // Try to reconnect after 5 seconds
+                reconnectWebSocket();
             };
 
             socket.onerror = (error) => {
@@ -214,6 +214,13 @@
                 document.getElementById('messageList').appendChild(listItem);
                 console.log('Received message:', messageData);
             };
+        }
+
+        function reconnectWebSocket() {
+            setTimeout(() => {
+                console.log('Reconnecting to WebSocket...');
+                setupWebSockets(); // Try to reconnect
+            }, 5000); // Reconnect after 5 seconds
         }
 
         async function startLiveStream() {
