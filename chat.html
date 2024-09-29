@@ -207,24 +207,14 @@
             };
 
             socket.onmessage = (event) => {
-    const message = event.data;
+                const message = event.data;
 
-    // Check if the message is in JSON format
-    try {
-        const parsedMessage = JSON.parse(message);
-
-        // Handle JSON messages if any
-        // Add any JSON handling logic here
-        console.log('Received JSON message:', parsedMessage);
-    } catch (e) {
-        // If it's not JSON, treat it as a plain string message
-        const listItem = document.createElement('li');
-        listItem.textContent = message; // Use the plain message
-        document.getElementById('messageList').appendChild(listItem);
-        console.log('Received plain message:', message);
-    }
-};
-
+                // Treat the message as a plain string
+                const listItem = document.createElement('li');
+                listItem.textContent = message; // Use the plain message
+                document.getElementById('messageList').appendChild(listItem);
+                console.log('Received plain message:', message);
+            };
         }
 
         function initSignalingSocket() {
@@ -263,20 +253,10 @@
                 const streamLink = `https://chat-and-live-stream.onrender.com/join-stream.html?streamId=${streamId}&token=${token}`;
 
                 localStorage.setItem('streamLink', streamLink);
-                document.getElementById('streamLink').innerHTML = `Share this link to join the stream: <a href="${streamLink}" target="_blank">${streamLink}</a>`;
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                signalingSocket.send(JSON.stringify({ offer }));
+                document.getElementById('streamLink').innerHTML = `Your stream link: <a href="${streamLink}" target="_blank">${streamLink}</a>`;
             } catch (error) {
-                console.error('Error starting live stream:', error);
+                console.error('Error accessing media devices.', error);
             }
-        }
-
-        function addTracksToPeerConnection(stream) {
-            stream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, stream);
-            });
         }
 
         function endLiveStream() {
@@ -284,40 +264,29 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
                 video.srcObject = null;
-                signalingSocket.send(JSON.stringify({ end: true })); // Notify other users that the stream has ended
+                document.getElementById('streamLink').innerHTML = '';
             }
         }
 
         function startScreenShare() {
-            navigator.mediaDevices.getDisplayMedia({ video: true })
-                .then(screenStream => {
-                    video.srcObject = screenStream;
-                    addTracksToPeerConnection(screenStream);
-
-                    screenStream.getTracks()[0].onended = () => {
-                        video.srcObject = localStream; // Switch back to the webcam
-                    };
-                })
-                .catch(error => {
-                    console.error('Error starting screen share:', error);
-                });
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then((stream) => {
+                screenStream = stream;
+                video.srcObject = screenStream;
+                addTracksToPeerConnection(screenStream);
+            });
         }
 
         function stopScreenShare() {
             if (screenStream) {
                 screenStream.getTracks().forEach(track => track.stop());
                 screenStream = null;
-                video.srcObject = localStream; // Switch back to the webcam
+                video.srcObject = null;
             }
         }
 
         function toggleVideo() {
-            if (localStream) {
-                videoEnabled = !videoEnabled;
-                localStream.getVideoTracks().forEach(track => {
-                    track.enabled = videoEnabled;
-                });
-            }
+            videoEnabled = !videoEnabled;
+            localStream.getVideoTracks().forEach(track => track.enabled = videoEnabled);
         }
 
         function copyStreamLink() {
@@ -329,17 +298,16 @@
 
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value.trim();
+            const message = messageInput.value;
+
             if (message) {
-                socket.send(JSON.stringify(message));
-                messageInput.value = ''; // Clear input field
+                socket.send(message); // Send the plain string message
+                messageInput.value = '';
             }
         }
 
-        // Start everything
         setupWebSockets();
         initSignalingSocket();
     </script>
-
 </body>
 </html>
