@@ -161,7 +161,7 @@
                 <input type="text" id="messageInput" placeholder="Enter your message">
                 <button class="send-button" onclick="sendMessage()">Send</button>
             </div>
-            <ul id="messageList"></ul>
+            <ul id="messageList"></ul> <!-- Display list of messages -->
         </section>
 
         <!-- Live Stream Section -->
@@ -214,7 +214,7 @@
                 const messageData = JSON.parse(event.data);
                 const listItem = document.createElement('li');
                 listItem.textContent = `${messageData.username}: ${messageData.text}`; // Format message
-                document.getElementById('messageList').appendChild(listItem);
+                document.getElementById('messageList').appendChild(listItem); // Append message to the list
                 console.log('Received message:', messageData);
             };
         }
@@ -290,6 +290,10 @@
 
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(messageData));
+                    // Also display the sent message immediately in the chat
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${username}: ${messageText}`; // Format sent message
+                    document.getElementById('messageList').appendChild(listItem); // Append message to the list
                 } else {
                     // Queue the message if the socket is not open
                     messageQueue.push(messageData);
