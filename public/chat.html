@@ -192,6 +192,8 @@
         const username = localStorage.getItem('username') || "User"; // Get username from localStorage
 
         function setupWebSockets() {
+            if (socket && socket.readyState !== WebSocket.CLOSED) return; // Prevent multiple connections
+
             socket = new WebSocket(`wss://chat-and-live-stream.onrender.com?token=${token}`);
 
             socket.onopen = () => {
