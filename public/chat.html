@@ -39,7 +39,7 @@
             flex-wrap: wrap;
         }
 
-        .chat-section, .stream-section {
+        .chat-section {
             background-color: rgba(255, 255, 255, 0.8);
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -55,34 +55,6 @@
             border-bottom: 2px solid #ddd;
             padding-bottom: 10px;
             margin-bottom: 20px;
-        }
-
-        #videoStream {
-            border-radius: 12px;
-            width: 100%;
-            max-height: 300px;
-            object-fit: cover;
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            margin-top: 10px;
-            margin-right: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .btn i {
-            margin-right: 8px;
-        }
-
-        .btn:hover {
-            background-color: #0056b3;
         }
 
         input[type="text"] {
@@ -116,41 +88,20 @@
             margin: 0;
             overflow-y: auto;
             flex: 1;
+            border: 1px solid #ddd;
+            height: 300px;
         }
 
         li {
             padding: 10px;
             border-bottom: 1px solid #ddd;
         }
-
-        .stream-buttons {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        #streamLink {
-            margin-top: 15px;
-            word-break: break-all;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                flex-direction: column;
-            }
-            .chat-section, .stream-section {
-                margin-right: 0;
-                width: 100%;
-            }
-        }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Chat Room & Live Stream</h1>
+        <h1>Chat Room</h1>
     </header>
 
     <div class="container">
@@ -161,49 +112,22 @@
                 <input type="text" id="messageInput" placeholder="Enter your message">
                 <button class="send-button" onclick="sendMessage()">Send</button>
             </div>
-            <ul id="messageList"></ul> <!-- Display list of messages -->
-        </section>
-
-        <!-- Live Stream Section -->
-        <section class="stream-section">
-            <h2>Live Video Stream</h2>
-            <video id="videoStream" autoplay muted></video>
-            <div class="stream-buttons">
-                <button class="btn" onclick="startLiveStream()"><i class="fas fa-video"></i>Start Live Stream</button>
-                <button class="btn" onclick="endLiveStream()"><i class="fas fa-stop"></i>End Live Stream</button>
-                <button class="btn" onclick="startScreenShare()"><i class="fas fa-desktop"></i>Start Screen Share</button>
-                <button class="btn" onclick="stopScreenShare()"><i class="fas fa-times-circle"></i>Stop Screen Share</button>
-                <button class="btn" onclick="toggleVideo()"><i class="fas fa-video-slash"></i>Toggle Video</button>
-                <button class="btn" onclick="copyStreamLink()"><i class="fas fa-link"></i>Copy Link</button>
-            </div>
-            <div id="streamLink"></div>
+            <ul id="messageList"></ul>
         </section>
     </div>
 
     <script>
         let socket;
-        let signalingSocket;
-        let peerConnection;
-        let localStream;
-        let screenStream;
-        let videoEnabled = true;
-        const video = document.getElementById('videoStream');
         const token = localStorage.getItem('token');
         const username = localStorage.getItem('username') || "User"; // Get username from localStorage
-        let messageQueue = []; // Queue for messages when socket is not open
+        const messageList = document.getElementById('messageList');
 
-        function setupWebSockets() {
-            if (socket && socket.readyState !== WebSocket.CLOSED) return; // Prevent multiple connections
-
+        // Function to set up WebSocket
+        function setupWebSocket() {
             socket = new WebSocket(`wss://chat-and-live-stream.onrender.com?token=${token}`);
 
             socket.onopen = () => {
-                console.log('WebSocket connection established');
-                // Send all queued messages
-                while (messageQueue.length > 0) {
-                    const messageData = messageQueue.shift(); // Get the first message in the queue
-                    socket.send(JSON.stringify(messageData)); // Send it
-                }
+                console.log('WebSocket connected');
             };
 
             socket.onerror = (error) => {
@@ -211,76 +135,16 @@
             };
 
             socket.onmessage = (event) => {
+                console.log('Message from server:', event.data);
                 const messageData = JSON.parse(event.data);
-                const listItem = document.createElement('li');
-                listItem.textContent = `${messageData.username}: ${messageData.text}`; // Format message
-                document.getElementById('messageList').appendChild(listItem); // Append message to the list
-                console.log('Received message:', messageData);
+                displayMessage(messageData.username, messageData.text);
             };
         }
 
-        async function startLiveStream() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                video.srcObject = localStream;
-                addTracksToPeerConnection(localStream);
-
-                const streamId = new Date().getTime();
-                const streamLink = `https://chat-and-live-stream.onrender.com/join-stream.html?streamId=${streamId}&token=${token}`;
-
-                localStorage.setItem('streamLink', streamLink);
-                document.getElementById('streamLink').innerHTML = `Your stream link: <a href="${streamLink}" target="_blank" style="color: blue; text-decoration: underline;">${streamLink}</a>`;
-            } catch (error) {
-                console.error('Error accessing media devices.', error);
-            }
-        }
-
-        function endLiveStream() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-                video.srcObject = null;
-                document.getElementById('streamLink').textContent = '';
-            }
-        }
-
-        function startScreenShare() {
-            navigator.mediaDevices.getDisplayMedia({ video: true }).then((stream) => {
-                screenStream = stream;
-                video.srcObject = screenStream;
-                addTracksToPeerConnection(screenStream);
-            });
-        }
-
-        function stopScreenShare() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                screenStream = null;
-                video.srcObject = localStream; // Revert to local stream if available
-            }
-        }
-
-        function toggleVideo() {
-            videoEnabled = !videoEnabled;
-            localStream.getVideoTracks().forEach(track => {
-                track.enabled = videoEnabled;
-            });
-        }
-
-        function copyStreamLink() {
-            const link = localStorage.getItem('streamLink');
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Stream link copied to clipboard!');
-            });
-        }
-
-        function addTracksToPeerConnection(stream) {
-            // Add tracks to peer connection logic
-        }
-
+        // Function to send a message
         function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const messageText = messageInput.value;
+            const messageText = messageInput.value.trim(); // Trim whitespace
 
             if (messageText) {
                 const messageData = {
@@ -288,23 +152,27 @@
                     text: messageText
                 };
 
-                if (socket && socket.readyState === WebSocket.OPEN) {
+                // Send message through WebSocket
+                if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(messageData));
-                    // Also display the sent message immediately in the chat
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `${username}: ${messageText}`; // Format sent message
-                    document.getElementById('messageList').appendChild(listItem); // Append message to the list
+                    displayMessage(username, messageText); // Show message in the UI immediately
                 } else {
-                    // Queue the message if the socket is not open
-                    messageQueue.push(messageData);
+                    console.warn('WebSocket is not open.');
                 }
 
                 messageInput.value = ''; // Clear the input field
             }
         }
 
-        // Initialize WebSockets when the window loads
-        window.onload = setupWebSockets;
+        // Function to display message in the chat
+        function displayMessage(username, text) {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${username}: ${text}`;
+            messageList.appendChild(listItem);
+        }
+
+        // Initialize WebSocket when window loads
+        window.onload = setupWebSocket;
     </script>
 
 </body>
